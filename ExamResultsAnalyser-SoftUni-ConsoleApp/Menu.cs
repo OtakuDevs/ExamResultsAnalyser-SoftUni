@@ -28,7 +28,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
-                            for (int i = 1; i < totalResultsPages; i++)
+                            for (int i = 1; i <= totalResultsPages; i++)
                             {
                                 string htmlCode = BuildHTML(client, i, contestNumber);
 
@@ -47,7 +47,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         Console.WriteLine("Invalid choice, please select and existing option!\n");
                         break;
                 }
-
             }
         }
 
@@ -58,8 +57,8 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
             Console.WriteLine(" +++++++++++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("\n                        MENU                        ");
             Console.WriteLine("\n +++++++++++++++++++++++++++++++++++++++++++++++++++");
-            Console.WriteLine(" URL Builder                                    :1 ");
-            Console.WriteLine(" Get Results                                    :2 ");
+            Console.WriteLine(" URL Builder and Get Results                    :1 ");
+            Console.WriteLine("                                                :2 ");
             Console.WriteLine("                                                :3 ");
             Console.WriteLine("                                                :4 ");
             Console.WriteLine("                                                :5 ");

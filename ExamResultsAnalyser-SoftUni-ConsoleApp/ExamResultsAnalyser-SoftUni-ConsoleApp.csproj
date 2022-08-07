@@ -6,4 +6,8 @@
     <RootNamespace>ExamResultsAnalyser_SoftUni_ConsoleApp</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.43" />
+  </ItemGroup>
+
 </Project>

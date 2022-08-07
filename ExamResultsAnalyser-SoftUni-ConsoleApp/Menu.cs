@@ -4,9 +4,14 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualBasic.CompilerServices;
+using HtmlAgilityPack;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+
 
 namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 {
@@ -30,14 +35,40 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         string contestNumber = GetContestNumber();
                         int totalResultsPages = GetPagesFromContestants();
 
+                        var baseAddress = new Uri("https://judge.softuni.org/");
+                        var cookieContainer = new CookieContainer();
+                        using (var handler = new HttpClientHandler() { CookieContainer = cookieContainer })
+                        using (var client = new HttpClient(handler) { BaseAddress = baseAddress })
+                        {
+                            //usually i make a standard request without authentication, eg: to the home page.
+                            //by doing this request you store some initial cookie values, that might be used in the subsequent login request and checked by the server
+                            var homePageResult = client.GetAsync("/");
+                            homePageResult.Result.EnsureSuccessStatusCode();
+
+                            var content = new FormUrlEncodedContent(new[]
+                            {
+                                //the name of the form values must be the name of <input /> tags of the login form, in this case the tag is <input type="text" name="username">
+                                new KeyValuePair<string, string>("krifod", "krifod"),
+                                new KeyValuePair<string, string>("JIKtak6424@", "JIKtak6424@"),
+                            });
+                            var loginResult = client.PostAsync("/Account/Login", content).Result;
+                            loginResult.EnsureSuccessStatusCode();
+
+                            //make the subsequent web requests using the same HttpClient object
+                        }
+
+
+
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
                             for (int i = 1; i <= totalResultsPages; i++)
                             {
-                                //string htmlCode = BuildHTML(client, i, contestNumber);
+                                string htmlCode = BuildHTML(client, i, contestNumber);
                                 string regexPatternTasks = @"(0[1-6]{1}\.) [ ]?[^\W].+";
 
                                 string regextPatternIndividualResults = @"\B<td>([0-9]+){3}\b</td>|<td>([\-])</td>";
+
+                                Console.WriteLine(htmlCode);
 
                                 List<string> taskNames = new List<string>();
                                 Dictionary<string, List<string>> individualResults =
@@ -223,8 +254,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
         private static string BuildHTML(WebClient client, int pageIndex, string contestNumber)
         {
             string indexToString = pageIndex.ToString();
-
-
+            
             byte[] content =
                 client.DownloadData(
                     @$"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}");

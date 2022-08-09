@@ -59,6 +59,12 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         //HTML Source scraping
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
+                            List<string> taskNames = new List<string>();
+                            Dictionary<string, List<string>> individualResults =
+                                new Dictionary<string, List<string>>();
+
+                            Dictionary<string, List<double>> averagePerTask = new Dictionary<string, List<double>>();
+
                             for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
                                 string indexToString = pageIndex.ToString();
@@ -78,10 +84,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 htmlFile.Write(htmlCode);
                                 htmlFile.Flush();
                                 htmlFile.Close();
-
-                                List<string> taskNames = new List<string>();
-                                Dictionary<string, List<string>> individualResults =
-                                    new Dictionary<string, List<string>>();
 
                                 List<string> tempList = new List<string>();
 
@@ -174,10 +176,8 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                     }
                                 }
 
-                                Console.WriteLine($"Unique tasks: {taskNames.Count}");
-                                Console.WriteLine(string.Join(Environment.NewLine, taskNames));
 
-                                Dictionary<string, List<double>> averagePerTask = new Dictionary<string, List<double>>();
+
 
                                 foreach (var result in individualResults)
                                 {
@@ -205,6 +205,9 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                     averagePerTask[result.Key].Add(averagePoints);
                                 }
                             }
+
+                            Console.WriteLine($"Unique tasks: {taskNames.Count}");
+                            Console.WriteLine(string.Join(Environment.NewLine, taskNames));
 
 
 

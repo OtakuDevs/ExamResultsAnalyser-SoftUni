@@ -1,20 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.VisualBasic.CompilerServices;
-using HtmlAgilityPack;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Firefox;
-using System.Data.Common;
+
 
 
 namespace ExamResultsAnalyser_SoftUni_ConsoleApp
@@ -47,11 +40,18 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         int totalResultsPages = GetPagesFromContestants();
 
                         //Login for Judge
-                        Console.Write(" What is your username: ");
+                        Console.Write(" Enter your username: ");
                         string username = Console.ReadLine();
 
-                        Console.Write(" What is your password: ");
-                        string password = Console.ReadLine();
+                        Console.Write(" Enter is your password: ");
+                        string password = null;
+                        while (true)
+                        {
+                            var key = System.Console.ReadKey(true);
+                            if (key.Key == ConsoleKey.Enter)
+                                break;
+                            password += key.KeyChar;
+                        }
 
                         BrowserSetup();
                         LoginSetup(username, password);
@@ -65,7 +65,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                             Dictionary<string, List<double>> averagePerTask = new Dictionary<string, List<double>>();
 
-                            for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
+                            for (int pageIndex = 1; pageIndex <= 3; pageIndex++)
                             {
                                 string indexToString = pageIndex.ToString();
 
@@ -122,7 +122,10 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 for (int j = 0; j < taskNames.Count; j++)
                                 {
-                                    individualResults.Add(taskNames[j], new List<string>());
+                                    if (!individualResults.ContainsKey(taskNames[j]))
+                                    {
+                                        individualResults.Add(taskNames[j], new List<string>());
+                                    }
                                 }
 
                                 Dictionary<int, List<string>> studentDictionary = new Dictionary<int, List<string>>();
@@ -157,6 +160,11 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                     studentDictionary[j + 1].RemoveAt(16);
 
                                     if (j == 99)
+                                    {
+                                        studentDictionary[j + 1].RemoveAt(0);
+                                    }
+
+                                    if (pageIndex > 1)
                                     {
                                         studentDictionary[j + 1].RemoveAt(0);
                                     }
@@ -207,8 +215,8 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                             }
 
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
-                            Console.WriteLine(string.Join(Environment.NewLine, taskNames));
-
+                            Console.Write(string.Join(Environment.NewLine, taskNames));
+                            Console.Write(string.Join(" -> ", averagePerTask + $" /100, attempts {averagePerTask.Values.Select(a=>a.Count)}"));
 
 
                         }

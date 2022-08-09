@@ -11,12 +11,22 @@ using Microsoft.VisualBasic.CompilerServices;
 using HtmlAgilityPack;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Firefox;
+using System.Data.Common;
 
 
 namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 {
     class Menu
     {
+
+        FirefoxDriverService service = FirefoxDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the geckodriver.exe file
+
+        private IWebDriver driver;
+        private LoginPage login;
+
         public void StartProgram()
         {
             int choice = -1;
@@ -32,43 +42,43 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                     case 0:
                         break;
                     case 1:
+                        //Obtain contest number and number of contestants to calculate the pages and build the url
                         string contestNumber = GetContestNumber();
                         int totalResultsPages = GetPagesFromContestants();
 
-                        var baseAddress = new Uri("https://judge.softuni.org/");
-                        var cookieContainer = new CookieContainer();
-                        using (var handler = new HttpClientHandler() { CookieContainer = cookieContainer })
-                        using (var client = new HttpClient(handler) { BaseAddress = baseAddress })
-                        {
-                            //usually i make a standard request without authentication, eg: to the home page.
-                            //by doing this request you store some initial cookie values, that might be used in the subsequent login request and checked by the server
-                            var homePageResult = client.GetAsync("/");
-                            homePageResult.Result.EnsureSuccessStatusCode();
+                        //Login for Judge
 
-                            var content = new FormUrlEncodedContent(new[]
-                            {
-                                //the name of the form values must be the name of <input /> tags of the login form, in this case the tag is <input type="text" name="username">
-                                new KeyValuePair<string, string>("krifod", "krifod"),
-                                new KeyValuePair<string, string>("JIKtak6424@", "JIKtak6424@"),
-                            });
-                            var loginResult = client.PostAsync("/Account/Login", content).Result;
-                            loginResult.EnsureSuccessStatusCode();
+                        Console.Write(" What is your username: ");
+                        string username = Console.ReadLine();
 
-                            //make the subsequent web requests using the same HttpClient object
-                        }
+                        Console.Write(" What is your password: ");
+                        string password = Console.ReadLine();
 
+                        BrowserSetup();
+                        LoginSetup(username, password);
 
 
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
-                            for (int i = 1; i <= totalResultsPages; i++)
+                            for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
-                                string htmlCode = BuildHTML(client, i, contestNumber);
+                                string indexToString = pageIndex.ToString();
+
+                                string currentPageUrl =
+                                    $"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}";
+
+                                string htmlCode = GoToContest(currentPageUrl);
+
+                                //string htmlCode = BuildHTML(client, pageIndex, contestNumber);
                                 string regexPatternTasks = @"(0[1-6]{1}\.) [ ]?[^\W].+";
 
                                 string regextPatternIndividualResults = @"\B<td>([0-9]+){3}\b</td>|<td>([\-])</td>";
 
-                                Console.WriteLine(htmlCode);
+                                System.IO.StreamWriter htmlFile = new StreamWriter(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
+                                htmlFile.BaseStream.Seek(0, SeekOrigin.End);
+                                htmlFile.Write(htmlCode);
+                                htmlFile.Flush();
+                                htmlFile.Close();
 
                                 List<string> taskNames = new List<string>();
                                 Dictionary<string, List<string>> individualResults =
@@ -76,7 +86,10 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 List<string> tempList = new List<string>();
 
-                                using (StreamReader r = new StreamReader("test.html"))
+                                FileInfo fi = new FileInfo(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
+                                FileStream fs = fi.Open(FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
+
+                                using (StreamReader r = new StreamReader(fs))
                                 {
                                     string line;
                                     while ((line = r.ReadLine()) != null)
@@ -192,10 +205,9 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                     averagePerTask[result.Key].Add(averagePoints);
                                 }
-
-
-
                             }
+
+
 
                         }
 
@@ -254,7 +266,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
         private static string BuildHTML(WebClient client, int pageIndex, string contestNumber)
         {
             string indexToString = pageIndex.ToString();
-            
+
             byte[] content =
                 client.DownloadData(
                     @$"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}");
@@ -266,6 +278,30 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
             string htmlCode = Encoding.UTF8.GetString(convertedBytes);
 
             return htmlCode;
+        }
+
+        private void BrowserSetup()
+        {
+            driver = new FirefoxDriver(service);
+            driver.Navigate().GoToUrl("https://judge.softuni.org/Account/Login");
+        }
+
+        private void LoginSetup(string username, string password)
+        {
+            login = new LoginPage(driver);
+
+            login.LoginApplication(username, password);
+        }
+
+        private string GoToContest(string currentUrl)
+        {
+            string currentHtml = String.Empty;
+
+            driver.Navigate().GoToUrl(currentUrl);
+
+            currentHtml = driver.PageSource;
+
+            return currentHtml;
         }
     }
 }

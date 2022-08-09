@@ -57,6 +57,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         BrowserSetup();
                         LoginSetup(username, password);
 
+                        bool stop = false;
                         //HTML Source scraping
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
@@ -64,24 +65,37 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                             Dictionary<string, List<string>> individualResults =
                                 new Dictionary<string, List<string>>();
 
-                            Dictionary<string, List<double>> averagePerTask = new Dictionary<string, List<double>>();
+                            Dictionary<string, SortedDictionary<double, int>> averagePerTask = new Dictionary<string, SortedDictionary<double, int>>();
+
+                            int counterTest = 0;
 
                             for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
+                                if (pageIndex == totalResultsPages)
+                                {
+                                    counterTest++;
+                                }
 
-                                //if the page does not load
-                                repeat:
+                                if (counterTest > 1)
+                                {
+                                    break;
+                                }
+
+                            //if the page does not load
+                            repeat:
                                 string indexToString = pageIndex.ToString();
 
                                 string currentPageUrl =
                                     $"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}";
+
+
 
                                 string htmlCode = GoToContest(currentPageUrl);
 
                                 //string htmlCode = BuildHTML(client, pageIndex, contestNumber);
                                 string regexPatternTasks = @"(0[1-6]{1}\.) [ ]?[^\W].+";
 
-                                string regextPatternIndividualResults = @"\B<td>([0-9]+){3}\b</td>|<td>([\-])</td>";
+                                string regextPatternIndividualResults = @"\B<td>([0-9]+){1,3}\b</td>|<td>([\-])</td>";
 
                                 System.IO.StreamWriter htmlFile = new StreamWriter(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
                                 htmlFile.BaseStream.Seek(0, SeekOrigin.End);
@@ -94,21 +108,27 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 FileInfo fi = new FileInfo(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
                                 FileStream fs = fi.Open(FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
 
+
                                 using (StreamReader r = new StreamReader(fs))
                                 {
                                     string line;
                                     while ((line = r.ReadLine()) != null)
                                     {
+
+                                        if (pageIndex == 1)
+                                        {
+                                            Match m = Regex.Match(line, regexPatternTasks);
+                                            if (m.Success)
+                                            {
+                                                // Y.
+                                                // Write original line and the value.
+                                                string v = m.Value;
+                                                taskNames.Add(v);
+                                            }
+                                        }
+
                                         // X.
                                         // Try to match each line against the Regex.
-                                        Match m = Regex.Match(line, regexPatternTasks);
-                                        if (m.Success)
-                                        {
-                                            // Y.
-                                            // Write original line and the value.
-                                            string v = m.Value;
-                                            taskNames.Add(v);
-                                        }
 
                                         Match mk = Regex.Match(line, regextPatternIndividualResults);
                                         if (mk.Success)
@@ -134,50 +154,92 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 Dictionary<int, List<string>> studentDictionary = new Dictionary<int, List<string>>();
 
-                                for (int j = 0; j < 100; j++)
+                                int stopLoop = tempList.Count / 18;
+
+                                if (pageIndex == totalResultsPages)
                                 {
-                                    studentDictionary.Add(j + 1, new List<string>());
-                                }
-
-                                
-
-
-                                int counter = 1;
-                                for (int j = 1; j <= tempList.Count; j++)
-                                {
-
-                                    studentDictionary[counter].Add(tempList[j - 1]);
-
-                                    if (j % 17 == 0)
+                                    for (int j = 0; j < stopLoop; j++)
                                     {
-                                        counter++;
+                                        studentDictionary.Add(j + 1, new List<string>());
                                     }
-
-                                    if (counter > 100)
+                                }
+                                else
+                                {
+                                    for (int j = 0; j < 100; j++)
                                     {
-                                        studentDictionary[counter - 1].Add(tempList[j - 1]);
-                                        break;
+                                        studentDictionary.Add(j + 1, new List<string>());
                                     }
                                 }
 
 
-                                if (studentDictionary.Count == 0)
+                                if (pageIndex == totalResultsPages)
                                 {
-                                    goto repeat;
+                                    int counter = 1;
+                                    for (int j = 1; j <= tempList.Count; j++)
+                                    {
+
+                                        studentDictionary[counter].Add(tempList[j - 1]);
+
+                                        if (j % 18 == 0)
+                                        {
+                                            counter++;
+                                        }
+
+                                        if (counter - 1 == stopLoop)
+                                        {
+                                            break;
+                                        }
+
+                                        if (counter > 100)
+                                        {
+                                            studentDictionary[counter - 1].Add(tempList[j - 1]);
+                                            break;
+                                        }
+                                    }
                                 }
+                                else
+                                {
+                                    int counter = 1;
+                                    for (int j = 1; j <= tempList.Count; j++)
+                                    {
+
+                                        studentDictionary[counter].Add(tempList[j - 1]);
+
+
+                                        if (j % 18 == 0)
+                                        {
+                                            counter++;
+                                        }
+
+                                        if (counter > 100)
+                                        {
+                                            studentDictionary[counter - 1].Add(tempList[j - 1]);
+                                            break;
+                                        }
+                                    }
+                                }
+
 
                                 for (int j = 0; j < studentDictionary.Count; j++)
                                 {
-                                    studentDictionary[j + 1].RemoveAt(16);
+                                    if (studentDictionary[j + 1].Count == 0)
+                                    {
+                                        goto repeat;
+                                    }
+
+
+                                    studentDictionary[j + 1].RemoveAt(17);
+
+                                    studentDictionary[j + 1].RemoveAt(0);
 
                                     if (j == 99)
                                     {
-                                        studentDictionary[j + 1].RemoveAt(0);
+                                        studentDictionary[j + 1].RemoveAt(16);
                                     }
 
-                                    if (pageIndex > 1)
+                                    if (j + 1 == stopLoop)
                                     {
-                                        studentDictionary[j + 1].RemoveAt(0);
+                                        break;
                                     }
                                 }
 
@@ -196,44 +258,55 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 }
 
 
-
-
-                                foreach (var result in individualResults)
+                                if (pageIndex == totalResultsPages)
                                 {
-                                    double averagePoints = 0;
-                                    int counter2 = 0;
-                                    foreach (var rr in result.Value)
-                                    {
-                                        double a;
-                                        bool testParse = double.TryParse(rr, out a);
-
-                                        if (testParse)
-                                        {
-                                            averagePoints += a;
-                                            counter2++;
-                                        }
-                                    }
-
-                                    averagePoints /= counter2;
-
-                                    if (!averagePerTask.ContainsKey(result.Key))
-                                    {
-                                        averagePerTask.Add(result.Key, new List<double>());
-                                    }
-
-                                    averagePerTask[result.Key].Add(averagePoints);
+                                    stop = true;
+                                    break;
                                 }
                             }
 
+                            foreach (var result in individualResults)
+                            {
+                                double averagePoints = 0;
+                                int counterAttempts = 0;
+
+                                foreach (var rr in result.Value)
+                                {
+                                    double a;
+                                    bool testParse = double.TryParse(rr, out a);
+
+                                    if (testParse)
+                                    {
+                                        averagePoints += a;
+                                        counterAttempts++;
+                                    }
+                                }
+
+                                averagePoints /= counterAttempts;
+
+                                if (!averagePerTask.ContainsKey(result.Key))
+                                {
+                                    averagePerTask.Add(result.Key, new SortedDictionary<double, int>());
+                                }
+
+                                averagePerTask[result.Key].Add(averagePoints, counterAttempts);
+                            }
+
+
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
-                            Console.Write(string.Join(Environment.NewLine, taskNames));
+
+                            //averagePerTask = averagePerTask.Select(x => x.Value).OrderBy(x => x.Keys).ToDictionary();
 
                             foreach (var taskAverage in averagePerTask)
                             {
-                                Console.Write($" -> {taskAverage.Value.Average()} /100, attemps {taskAverage.Value.Count}");
-                            }
-                            //Console.Write(string.Join(" -> ", averagePerTask + $" /100, attempts {averagePerTask.Values.Select(a => a.Count)}"));
+                                double taskAvg = taskAverage.Value.FirstOrDefault().Key;
+                                int taskAtt = taskAverage.Value.FirstOrDefault().Value;
+                                
+                                Console.Write($"{taskAverage.Key}");
+                                //Console.WriteLine($" -> {taskAvg:f1} /100.0, total task attempts {taskAtt}");
 
+                                Console.WriteLine(string.Join(Environment.NewLine, taskAverage.Value.OrderBy(x => x.Key).Select(y => $" -> {y.Key:f1} /100.0, total task attempts {y.Value}")));
+                            }
 
                         }
 

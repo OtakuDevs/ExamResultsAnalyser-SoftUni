@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
 using OpenQA.Selenium;
@@ -65,8 +66,11 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                             Dictionary<string, List<double>> averagePerTask = new Dictionary<string, List<double>>();
 
-                            for (int pageIndex = 1; pageIndex <= 3; pageIndex++)
+                            for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
+
+                                //if the page does not load
+                                repeat:
                                 string indexToString = pageIndex.ToString();
 
                                 string currentPageUrl =
@@ -133,13 +137,15 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 for (int j = 0; j < 100; j++)
                                 {
                                     studentDictionary.Add(j + 1, new List<string>());
-
                                 }
+
+                                
 
 
                                 int counter = 1;
                                 for (int j = 1; j <= tempList.Count; j++)
                                 {
+
                                     studentDictionary[counter].Add(tempList[j - 1]);
 
                                     if (j % 17 == 0)
@@ -154,6 +160,11 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                     }
                                 }
 
+
+                                if (studentDictionary.Count == 0)
+                                {
+                                    goto repeat;
+                                }
 
                                 for (int j = 0; j < studentDictionary.Count; j++)
                                 {
@@ -216,7 +227,12 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
                             Console.Write(string.Join(Environment.NewLine, taskNames));
-                            Console.Write(string.Join(" -> ", averagePerTask + $" /100, attempts {averagePerTask.Values.Select(a=>a.Count)}"));
+
+                            foreach (var taskAverage in averagePerTask)
+                            {
+                                Console.Write($" -> {taskAverage.Value.Average()} /100, attemps {taskAverage.Value.Count}");
+                            }
+                            //Console.Write(string.Join(" -> ", averagePerTask + $" /100, attempts {averagePerTask.Values.Select(a => a.Count)}"));
 
 
                         }

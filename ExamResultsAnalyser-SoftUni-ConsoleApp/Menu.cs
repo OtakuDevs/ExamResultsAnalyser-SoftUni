@@ -295,19 +295,15 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
 
-                            //averagePerTask = averagePerTask.Select(x => x.Value).OrderBy(x => x.Keys).ToDictionary();
-
                             foreach (var taskAverage in averagePerTask)
                             {
                                 double taskAvg = taskAverage.Value.FirstOrDefault().Key;
                                 int taskAtt = taskAverage.Value.FirstOrDefault().Value;
                                 
                                 Console.Write($"{taskAverage.Key}");
-                                //Console.WriteLine($" -> {taskAvg:f1} /100.0, total task attempts {taskAtt}");
 
                                 Console.WriteLine(string.Join(Environment.NewLine, taskAverage.Value.OrderBy(x => x.Key).Select(y => $" -> {y.Key:f1} /100.0, total task attempts {y.Value}")));
                             }
-
                         }
 
                         break;

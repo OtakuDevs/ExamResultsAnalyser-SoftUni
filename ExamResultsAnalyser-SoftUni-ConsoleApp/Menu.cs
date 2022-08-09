@@ -47,7 +47,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         int totalResultsPages = GetPagesFromContestants();
 
                         //Login for Judge
-
                         Console.Write(" What is your username: ");
                         string username = Console.ReadLine();
 
@@ -57,7 +56,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         BrowserSetup();
                         LoginSetup(username, password);
 
-
+                        //HTML Source scraping
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
                             for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)

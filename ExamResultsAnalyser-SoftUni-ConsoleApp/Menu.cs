@@ -13,7 +13,7 @@ using OpenQA.Selenium.Firefox;
 
 namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 {
-    class Menu
+    public class Menu
     {
 
         FirefoxDriverService service = FirefoxDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the geckodriver.exe file
@@ -62,24 +62,27 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
                             List<string> taskNames = new List<string>();
-                            Dictionary<string, List<string>> individualResults =
-                                new Dictionary<string, List<string>>();
+                            //Dictionary<string, List<string>> individualResults = new Dictionary<string, List<string>>();
 
-                            Dictionary<string, SortedDictionary<double, int>> averagePerTask = new Dictionary<string, SortedDictionary<double, int>>();
+                            SortedDictionary<string, SortedDictionary<double, int>> averagePerTask = new SortedDictionary<string, SortedDictionary<double, int>>();
 
-                            int counterTest = 0;
+                            Dictionary<string, List<string>> TaskResults = new Dictionary<string, List<string>>();
+
+                            List<Student> students = new List<Student>();
+
+                            //int counterTest = 0;
 
                             for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
-                                if (pageIndex == totalResultsPages)
-                                {
-                                    counterTest++;
-                                }
+                                //if (pageIndex == totalResultsPages)
+                                //{
+                                //    counterTest++;
+                                //}
 
-                                if (counterTest > 1)
-                                {
-                                    break;
-                                }
+                                //if (counterTest > 1)
+                                //{
+                                //    break;
+                                //}
 
                             //if the page does not load
                             repeat:
@@ -92,7 +95,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 string htmlCode = GoToContest(currentPageUrl);
 
-                                //string htmlCode = BuildHTML(client, pageIndex, contestNumber);
                                 string regexPatternTasks = @"(0[1-6]{1}\.) [ ]?[^\W].+";
 
                                 string regextPatternIndividualResults = @"\B<td>([0-9]+){1,3}\b</td>|<td>([\-])</td>";
@@ -103,15 +105,18 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 htmlFile.Flush();
                                 htmlFile.Close();
 
-                                List<string> tempList = new List<string>();
+                                //List<string> tempList = new List<string>();
 
                                 FileInfo fi = new FileInfo(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
                                 FileStream fs = fi.Open(FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
 
 
+                                int taskIndex = 0;
+
                                 using (StreamReader r = new StreamReader(fs))
                                 {
                                     string line;
+                                    int success = -1;
                                     while ((line = r.ReadLine()) != null)
                                     {
 
@@ -123,6 +128,8 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                                 // Y.
                                                 // Write original line and the value.
                                                 string v = m.Value;
+                                                if(v[4] == ' ') 
+                                                    v = v.Remove(4,1);
                                                 taskNames.Add(v);
                                             }
                                         }
@@ -131,142 +138,46 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                         // Try to match each line against the Regex.
 
                                         Match mk = Regex.Match(line, regextPatternIndividualResults);
+                                        
                                         if (mk.Success)
                                         {
+                                            success++;
+                                            if(success == 0 || success == taskNames.Count + 1)
+                                            {
+                                                if (success == taskNames.Count + 1)
+                                                {
+                                                    success = -1;
+                                                    if (taskIndex == taskNames.Count)
+                                                    {
+                                                        taskIndex = 0;
+                                                    }
+                                                }
+                                                continue;
+                                            }
                                             // Y.
                                             // Write original line and the value.
                                             string v = mk.Value;
 
                                             v = v.TrimStart(new char[] { '<', 't', 'd', '>' });
                                             v = v.TrimEnd(new char[] { '<', '/', 't', 'd', '>' });
-                                            tempList.Add(v);
+                                            //tempList.Add(v);
+                                            
+                                            if (!TaskResults.ContainsKey(taskNames[taskIndex]))
+                                            {
+                                                TaskResults.Add(taskNames[taskIndex], new List<string>());
+                                            }
+                                            TaskResults[taskNames[taskIndex]].Add(v);
+                                            taskIndex++;
+
                                         }
                                     }
-                                }
-
-                                for (int j = 0; j < taskNames.Count; j++)
-                                {
-                                    if (!individualResults.ContainsKey(taskNames[j]))
-                                    {
-                                        individualResults.Add(taskNames[j], new List<string>());
-                                    }
-                                }
-
-                                Dictionary<int, List<string>> studentDictionary = new Dictionary<int, List<string>>();
-
-                                int stopLoop = tempList.Count / 18;
-
-                                if (pageIndex == totalResultsPages)
-                                {
-                                    for (int j = 0; j < stopLoop; j++)
-                                    {
-                                        studentDictionary.Add(j + 1, new List<string>());
-                                    }
-                                }
-                                else
-                                {
-                                    for (int j = 0; j < 100; j++)
-                                    {
-                                        studentDictionary.Add(j + 1, new List<string>());
-                                    }
-                                }
-
-
-                                if (pageIndex == totalResultsPages)
-                                {
-                                    int counter = 1;
-                                    for (int j = 1; j <= tempList.Count; j++)
-                                    {
-
-                                        studentDictionary[counter].Add(tempList[j - 1]);
-
-                                        if (j % 18 == 0)
-                                        {
-                                            counter++;
-                                        }
-
-                                        if (counter - 1 == stopLoop)
-                                        {
-                                            break;
-                                        }
-
-                                        if (counter > 100)
-                                        {
-                                            studentDictionary[counter - 1].Add(tempList[j - 1]);
-                                            break;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    int counter = 1;
-                                    for (int j = 1; j <= tempList.Count; j++)
-                                    {
-
-                                        studentDictionary[counter].Add(tempList[j - 1]);
-
-
-                                        if (j % 18 == 0)
-                                        {
-                                            counter++;
-                                        }
-
-                                        if (counter > 100)
-                                        {
-                                            studentDictionary[counter - 1].Add(tempList[j - 1]);
-                                            break;
-                                        }
-                                    }
-                                }
-
-
-                                for (int j = 0; j < studentDictionary.Count; j++)
-                                {
-                                    if (studentDictionary[j + 1].Count == 0)
-                                    {
-                                        goto repeat;
-                                    }
-
-
-                                    studentDictionary[j + 1].RemoveAt(17);
-
-                                    studentDictionary[j + 1].RemoveAt(0);
-
-                                    if (j == 99)
-                                    {
-                                        studentDictionary[j + 1].RemoveAt(16);
-                                    }
-
-                                    if (j + 1 == stopLoop)
-                                    {
-                                        break;
-                                    }
-                                }
-
-                                foreach (var student in studentDictionary)
-                                {
-                                    int index = 0;
-                                    foreach (var taskResult in student.Value)
-                                    {
-                                        string currentResult = taskResult;
-
-                                        string currentKey = individualResults.ElementAt(index).Key;
-
-                                        individualResults[currentKey].Add(currentResult);
-                                        index++;
-                                    }
-                                }
-
-
-                                if (pageIndex == totalResultsPages)
-                                {
-                                    stop = true;
-                                    break;
                                 }
                             }
 
-                            foreach (var result in individualResults)
+                            
+                            foreach (var result in TaskResults)
                             {
+                                
                                 double averagePoints = 0;
                                 int counterAttempts = 0;
 
@@ -281,7 +192,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                         counterAttempts++;
                                     }
                                 }
-
+                                
                                 averagePoints /= counterAttempts;
 
                                 if (!averagePerTask.ContainsKey(result.Key))
@@ -291,7 +202,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 averagePerTask[result.Key].Add(averagePoints, counterAttempts);
                             }
-
+                            
 
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
 
@@ -299,13 +210,13 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                             {
                                 double taskAvg = taskAverage.Value.FirstOrDefault().Key;
                                 int taskAtt = taskAverage.Value.FirstOrDefault().Value;
-                                
+
                                 Console.Write($"{taskAverage.Key}");
 
-                                Console.WriteLine(string.Join(Environment.NewLine, taskAverage.Value.OrderBy(x => x.Key).Select(y => $" -> {y.Key:f1} /100.0, total task attempts {y.Value}")));
+                                Console.WriteLine(string.Join(Environment.NewLine, taskAverage.Value.OrderBy(x => x.Key).Select(y => $" -> {y.Key:f1} / 100.0, total task attempts {y.Value}")));
                             }
                         }
-
+                        BrowserClose();
                         break;
                     case 2:
                         break;
@@ -397,6 +308,12 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
             currentHtml = driver.PageSource;
 
             return currentHtml;
+        }
+
+        private void BrowserClose()
+        {
+            driver.Close();
+            driver.Quit(); 
         }
     }
 }

@@ -4,9 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection.Emit;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Firefox;
 
 
@@ -15,8 +18,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 {
     public class Menu
     {
-
-        FirefoxDriverService service = FirefoxDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the geckodriver.exe file
+        private int browserSelection = -1;
 
         private IWebDriver driver;
         private LoginPage login;
@@ -36,6 +38,44 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                     case 0:
                         break;
                     case 1:
+                        Console.Clear();
+                        Console.WriteLine("How to use Results Analyser for SoftUni Exams:");
+                        Console.WriteLine();
+                        Console.WriteLine("1.First you you need to pick you preferred browser.");
+                        Console.WriteLine();
+                        Console.WriteLine("2.Locate the \"Exam Contest Number\" and the \"Number of Contestants\".");
+                        Console.WriteLine();
+                        Console.WriteLine("3.Prepare your username and password!");
+                        Console.WriteLine();
+                        Console.WriteLine("4.Go to Option 3 from the Main Menu and follow the questions/prompts.");
+                        Console.WriteLine();
+                        Console.WriteLine("5.After the scraper has finished, results will show on the Console, but will also be saved on a local file.");
+                        Console.WriteLine();
+                        Console.WriteLine("Press any key to go back!");
+                        System.Console.ReadKey(true);
+                        Console.Clear();
+
+                        break;
+                    case 2:
+                        Console.Clear();
+                        Console.Write(" Pick your preferred browser: ");
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        Console.WriteLine("(Note: You must have the browser installed for this to work!)");
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine(" Type 1 for Google Chrome ");
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine(" Type 2 for Mozilla Firefox ");
+                        Console.ForegroundColor = ConsoleColor.DarkCyan;
+                        Console.WriteLine(" Type 3 for Microsoft Edge ");
+                        Console.ForegroundColor = ConsoleColor.White;
+
+                        Console.Write($" Insert your selection here: ");
+                        browserSelection = int.Parse(Console.ReadLine());
+                        Console.Clear();
+
+                        break;
+                    case 3:
+                        Console.Clear();
                         //Obtain contest number and number of contestants to calculate the pages and build the url
                         string contestNumber = GetContestNumber();
                         int totalResultsPages = GetPagesFromContestants();
@@ -54,7 +94,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                             password += key.KeyChar;
                         }
 
-                        BrowserSetup();
+                        BrowserSetup(browserSelection);
                         LoginSetup(username, password);
 
                         bool stop = false;
@@ -62,7 +102,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                         using (WebClient client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
                         {
                             List<string> taskNames = new List<string>();
-                            //Dictionary<string, List<string>> individualResults = new Dictionary<string, List<string>>();
 
                             SortedDictionary<string, SortedDictionary<double, int>> averagePerTask = new SortedDictionary<string, SortedDictionary<double, int>>();
 
@@ -70,28 +109,13 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                             List<Student> students = new List<Student>();
 
-                            //int counterTest = 0;
-
                             for (int pageIndex = 1; pageIndex <= totalResultsPages; pageIndex++)
                             {
-                                //if (pageIndex == totalResultsPages)
-                                //{
-                                //    counterTest++;
-                                //}
-
-                                //if (counterTest > 1)
-                                //{
-                                //    break;
-                                //}
-
-                            //if the page does not load
                             repeat:
                                 string indexToString = pageIndex.ToString();
 
                                 string currentPageUrl =
                                     $"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}";
-
-
 
                                 string htmlCode = GoToContest(currentPageUrl);
 
@@ -105,8 +129,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                 htmlFile.Flush();
                                 htmlFile.Close();
 
-                                //List<string> tempList = new List<string>();
-
                                 FileInfo fi = new FileInfo(AppDomain.CurrentDomain.BaseDirectory + @"\tempHTML.txt");
                                 FileStream fs = fi.Open(FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
 
@@ -119,6 +141,11 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                     int success = -1;
                                     while ((line = r.ReadLine()) != null)
                                     {
+                                        //If page does not load properly - reload
+                                        if (line.Contains("error"))
+                                        {
+                                            goto repeat;
+                                        }
 
                                         if (pageIndex == 1)
                                         {
@@ -128,8 +155,8 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                                 // Y.
                                                 // Write original line and the value.
                                                 string v = m.Value;
-                                                if(v[4] == ' ') 
-                                                    v = v.Remove(4,1);
+                                                if (v[4] == ' ')
+                                                    v = v.Remove(4, 1);
                                                 taskNames.Add(v);
                                             }
                                         }
@@ -138,11 +165,11 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                         // Try to match each line against the Regex.
 
                                         Match mk = Regex.Match(line, regextPatternIndividualResults);
-                                        
+
                                         if (mk.Success)
                                         {
                                             success++;
-                                            if(success == 0 || success == taskNames.Count + 1)
+                                            if (success == 0 || success == taskNames.Count + 1)
                                             {
                                                 if (success == taskNames.Count + 1)
                                                 {
@@ -160,24 +187,22 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                             v = v.TrimStart(new char[] { '<', 't', 'd', '>' });
                                             v = v.TrimEnd(new char[] { '<', '/', 't', 'd', '>' });
-                                            //tempList.Add(v);
-                                            
+
                                             if (!TaskResults.ContainsKey(taskNames[taskIndex]))
                                             {
                                                 TaskResults.Add(taskNames[taskIndex], new List<string>());
                                             }
                                             TaskResults[taskNames[taskIndex]].Add(v);
-                                            taskIndex++;
 
+                                            taskIndex++;
                                         }
                                     }
                                 }
                             }
 
-                            
                             foreach (var result in TaskResults)
                             {
-                                
+
                                 double averagePoints = 0;
                                 int counterAttempts = 0;
 
@@ -192,7 +217,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                                         counterAttempts++;
                                     }
                                 }
-                                
+
                                 averagePoints /= counterAttempts;
 
                                 if (!averagePerTask.ContainsKey(result.Key))
@@ -202,8 +227,9 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
 
                                 averagePerTask[result.Key].Add(averagePoints, counterAttempts);
                             }
-                            
 
+                            Console.WriteLine();
+                            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++++++++++");
                             Console.WriteLine($"Unique tasks: {taskNames.Count}");
 
                             foreach (var taskAverage in averagePerTask)
@@ -217,8 +243,13 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
                             }
                         }
                         BrowserClose();
-                        break;
-                    case 2:
+
+                        Console.WriteLine();
+                        Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++++++++++");
+                        Console.WriteLine("Press any key to go back!");
+                        System.Console.ReadKey(true);
+                        Console.Clear();
+
                         break;
                     default:
                         Console.WriteLine(); //Blank line - formatting
@@ -231,13 +262,13 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
         private void DisplayConsoleMenu()
         {
             //Menu formatting
-
+            
             Console.WriteLine(" +++++++++++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("\n                        MENU                        ");
             Console.WriteLine("\n +++++++++++++++++++++++++++++++++++++++++++++++++++");
-            Console.WriteLine(" URL Builder and Get Results                    :1 ");
-            Console.WriteLine("                                                :2 ");
-            Console.WriteLine("                                                :3 ");
+            Console.WriteLine(" How to use the Exam Results Analyser           :1 ");
+            Console.WriteLine(" Select your preferred browser                  :2 ");
+            Console.WriteLine(" URL Builder and Get Results                    :3 ");
             Console.WriteLine("                                                :4 ");
             Console.WriteLine("                                                :5 ");
             Console.WriteLine(" Exit the program                               :0 ");
@@ -269,26 +300,25 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
             return maxPageIndex;
         }
 
-        private static string BuildHTML(WebClient client, int pageIndex, string contestNumber)
+
+        private void BrowserSetup(int browserSelection)
         {
-            string indexToString = pageIndex.ToString();
+            switch (browserSelection)
+            {
+                case 1:
+                    ChromeDriverService serviceChrome = ChromeDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the chromedriver.exe file
+                    driver = new ChromeDriver(serviceChrome);
+                    break;
+                case 2:
+                    FirefoxDriverService serviceFirefox = FirefoxDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the geckodriver.exe file
+                    driver = new FirefoxDriver(serviceFirefox);
+                    break;
+                case 3:
+                    EdgeDriverService serviceEdge = EdgeDriverService.CreateDefaultService(AppDomain.CurrentDomain.BaseDirectory); // location of the msedgedriver.exe file
+                    driver = new EdgeDriver(serviceEdge);
+                    break;
+            }
 
-            byte[] content =
-                client.DownloadData(
-                    @$"https://judge.softuni.org/Contests/Compete/Results/Simple/{contestNumber}?page={indexToString}");
-
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            Encoding encoding1251 = Encoding.GetEncoding("windows-1251");
-            var convertedBytes = Encoding.Convert(encoding1251, Encoding.UTF8, content);
-
-            string htmlCode = Encoding.UTF8.GetString(convertedBytes);
-
-            return htmlCode;
-        }
-
-        private void BrowserSetup()
-        {
-            driver = new FirefoxDriver(service);
             driver.Navigate().GoToUrl("https://judge.softuni.org/Account/Login");
         }
 
@@ -313,7 +343,7 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
         private void BrowserClose()
         {
             driver.Close();
-            driver.Quit(); 
+            driver.Quit();
         }
     }
 }

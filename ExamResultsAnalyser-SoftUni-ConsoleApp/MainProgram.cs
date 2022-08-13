@@ -7,9 +7,6 @@ namespace ExamResultsAnalyser_SoftUni_ConsoleApp
         static void Main(string[] args)
         {
             //Console Formatting
-
-            Console.BackgroundColor = ConsoleColor.Black;
-            Console.ForegroundColor = ConsoleColor.Green;
             Console.Title = "Exam Results Analyser - SoftUni";
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.Clear();
